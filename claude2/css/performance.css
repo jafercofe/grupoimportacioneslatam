@@ -1,0 +1,444 @@
+/* ===== ESTILOS PARA PAGINACIÓN ===== */
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pagination-info {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.pagination-buttons .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ===== ESTILOS PARA NOTIFICACIONES MEJORADAS ===== */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.notification {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transform: translateX(420px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    pointer-events: auto;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-content {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.notification-message {
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font-size: 1.125rem;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.notification-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Tipos de notificaciones */
+.notification-success {
+    border-left: 4px solid #10b981;
+}
+
+.notification-error {
+    border-left: 4px solid #ef4444;
+}
+
+.notification-warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.notification-info {
+    border-left: 4px solid #3b82f6;
+}
+
+/* ===== ESTILOS PARA ESTADOS DE CARGA ===== */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-state .loading {
+    margin-bottom: 1rem;
+}
+
+.loading-state p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.error-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.error-state h3 {
+    color: #ef4444;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.error-state p {
+    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* ===== ESTILOS PARA VALIDACIÓN DE FORMULARIOS ===== */
+.form-group.has-error .form-input,
+.form-group.has-error .form-select {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.form-group.has-success .form-input,
+.form-group.has-success .form-select {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+}
+
+.field-error {
+    color: #fecaca;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.field-success {
+    color: #a7f3d0;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* ===== INDICADORES DE PERFORMANCE ===== */
+.performance-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-family: 'Monaco', 'Menlo', monospace;
+    z-index: 1000;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.performance-indicator:hover {
+    opacity: 1;
+}
+
+.performance-indicator .metric {
+    display: inline-block;
+    margin-right: 1rem;
+}
+
+.performance-indicator .metric:last-child {
+    margin-right: 0;
+}
+
+.performance-indicator .value {
+    color: #10b981;
+    font-weight: bold;
+}
+
+/* Cache status */
+.cache-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 0.5rem;
+}
+
+.cache-status.hit {
+    color: #10b981;
+}
+
+.cache-status.miss {
+    color: #f59e0b;
+}
+
+.cache-status.error {
+    color: #ef4444;
+}
+
+/* ===== OPTIMIZACIONES PARA TABLAS GRANDES ===== */
+.table-container.optimized {
+    contain: layout style paint;
+    will-change: scroll-position;
+}
+
+.table-container.optimized tbody tr {
+    contain: layout style;
+}
+
+/* Lazy loading indicator */
+.lazy-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+}
+
+.lazy-loading .loading {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+}
+
+/* ===== RESPONSIVE IMPROVEMENTS ===== */
+@media (max-width: 768px) {
+    .pagination-controls {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .pagination-buttons {
+        justify-content: center;
+    }
+    
+    .notification-container {
+        left: 20px;
+        right: 20px;
+    }
+    
+    .notification {
+        min-width: auto;
+        max-width: none;
+        transform: translateY(-100px);
+    }
+    
+    .notification.show {
+        transform: translateY(0);
+    }
+    
+    .performance-indicator {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        margin: 1rem;
+        width: calc(100% - 2rem);
+    }
+}
+
+/* ===== ANIMACIONES DE PERFORMANCE ===== */
+@keyframes slideInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+}
+
+.slide-in-up {
+    animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-out-down {
+    animation: slideOutDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+@media (prefers-reduced-motion: reduce) {
+    .notification,
+    .slide-in-up,
+    .slide-out-down {
+        animation: none;
+        transition: none;
+    }
+    
+    .notification {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+/* Focus management */
+.notification:focus-within,
+.pagination-controls button:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* ===== ESTILOS PARA DETALLES DE PEDIDO ===== */
+.totales-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.total-item {
+    color: white;
+    font-size: 1.125rem;
+    text-align: right;
+}
+
+.modal-body {
+    color: white;
+}
+
+.modal-body h4 {
+    color: white;
+    margin-bottom: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+#modal-detalles .table-container {
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin: 1rem 0;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+#modal-detalles .table {
+    width: 100%;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#modal-detalles tbody {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#modal-detalles tr {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+#modal-detalles td {
+    opacity: 1 !important;
+    visibility: visible !important;
+    color: #333 !important;
+}
+
+#modal-item-detalle .modal-content {
+    max-width: 500px;
+}
+
+/* Indicador de actualización de tabla */
+.table-updating {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.table-updating::after {
+    content: "Actualizando...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    z-index: 10;
+}
+
+/* Responsive para modales de detalles */
+@media (max-width: 768px) {
+    #modal-detalles .modal-content {
+        max-width: 95vw;
+        margin: 1rem;
+    }
+    
+    #modal-detalles .table-container {
+        overflow-x: auto;
+    }
+    
+    .totales-section {
+        text-align: center;
+    }
+}

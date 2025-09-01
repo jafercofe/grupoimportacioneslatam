@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo CRM - Sistema de Gestión Completo</title>
+    
+    <!-- Error Suppressor - DEBE IR PRIMERO -->
+    <script>
+    // Supresor de errores agresivo para "message channel closed"
+    (function() {
+        'use strict';
+        
+        // 1. Capturar errores no manejados de promesas
+        window.addEventListener('unhandledrejection', function(event) {
+            const errorMsg = event.reason?.message || String(event.reason) || '';
+            
+            // Lista de errores a ignorar
+            const errorsToIgnore = [
+                'message channel closed',
+                'Extension context invalidated',
+                'The message port closed',
+                'Could not establish connection',
+                'Receiving end does not exist',
+                'message port closed before a response was received',
+                'A listener indicated an asynchronous response by returning true'
+            ];
+            
+            if (errorsToIgnore.some(error => errorMsg.toLowerCase().includes(error.toLowerCase()))) {
+                console.warn('[SUPPRESSED] Extension/Channel error:', errorMsg);
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        // 2. Capturar errores globales
+        window.addEventListener('error', function(event) {
+            const errorMsg = event.message || '';
+            
+            if (errorMsg.includes('message channel closed') || 
+                errorMsg.includes('Extension context invalidated') ||
+                errorMsg.includes('listener indicated an asynchronous response')) {
+                console.warn('[SUPPRESSED] Global error:', errorMsg);
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        // 3. Interceptar chrome.runtime si existe
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+            const originalSendMessage = chrome.runtime.sendMessage;
+            chrome.runtime.sendMessage = function(...args) {
+                try {
+                    return originalSendMessage.apply(this, args);
+                } catch (error) {
+                    if (error.message.includes('message channel closed') ||
+                        error.message.includes('Extension context invalidated')) {
+                        console.warn('[SUPPRESSED] Chrome runtime error:', error.message);
+                        return Promise.resolve();
+                    }
+                    throw error;
+                }
+            };
+        }
+        
+        console.log('✅ Error suppressor initialized');
+    })();
+    </script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/performance.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Novo CRM</h1>
+            <p>Sistema de Gestión de Relaciones con Clientes</p>
+        </div>
+
+        <div id="connection-alert" class="alert alert-error hidden">
+            Error de conexión con Firebase.
+        </div>
+
+        <nav class="nav">
+            <div class="nav-buttons">
+                <button onclick="crmApp?.showTab('dashboard')" class="nav-btn active" data-tab="dashboard">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="crmApp?.showTab('clientes')" class="nav-btn" data-tab="clientes">
+                    <i data-lucide="users"></i>
+                    <span>Clientes</span>
+                </button>
+                <button onclick="crmApp?.showTab('empleados')" class="nav-btn" data-tab="empleados">
+                    <i data-lucide="user-check"></i>
+                    <span>Empleados</span>
+                </button>
+                <button onclick="crmApp?.showTab('productos')" class="nav-btn" data-tab="productos">
+                    <i data-lucide="package"></i>
+                    <span>Productos</span>
+                </button>
+                <button onclick="crmApp?.showTab('pedidos')" class="nav-btn" data-tab="pedidos">
+                    <i data-lucide="shopping-cart"></i>
+                    <span>Pedidos</span>
+                </button>
+                <button onclick="crmApp?.showTab('compras')" class="nav-btn" data-tab="compras">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </button>
+                <button onclick="crmApp?.showTab('proveedores')" class="nav-btn" data-tab="proveedores">
+                    <i data-lucide="truck"></i>
+                    <span>Proveedores</span>
+                </button>
+                <button onclick="crmApp?.showTab('estados')" class="nav-btn" data-tab="estados">
+                    <i data-lucide="flag"></i>
+                    <span>Estados</span>
+                </button>
+                <button onclick="crmApp?.showTab('entregas')" class="nav-btn" data-tab="entregas">
+                    <i data-lucide="package-check"></i>
+                    <span>Entregas</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-contacto')" class="nav-btn" data-tab="tipos-contacto">
+                    <i data-lucide="contact"></i>
+                    <span>Tipos Contacto</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-pago')" class="nav-btn" data-tab="tipos-pago">
+                    <i data-lucide="credit-card"></i>
+                    <span>Tipos Pago</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-trabajador')" class="nav-btn" data-tab="tipos-trabajador">
+                    <i data-lucide="briefcase"></i>
+                    <span>Tipos Trabajador</span>
+                </button>
+                <button onclick="crmApp?.showTab('reportes-ventas')" class="nav-btn" data-tab="reportes-ventas">
+                    <i data-lucide="trending-up"></i>
+                    <span>Reportes Ventas</span>
+                </button>
+                <button onclick="crmApp?.showTab('reportes-compras')" class="nav-btn" data-tab="reportes-compras">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Reportes Compras</span>
+                </button>
+            </div>
+        </nav>
+
+        <div class="content-area">
+            <!-- Dashboard -->
+            <div id="dashboard" class="tab-content active">
+                <h2 class="section-title text-center">Panel de Control</h2>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="loading"></div>
+                </div>
+            </div>
+
+            <!-- Clientes -->
+            <div id="clientes" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Clientes</h2>
+                    <button onclick="openModal('cliente')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="clientes-search" class="search-input" placeholder="Buscar clientes...">
+                    </div>
+                </div>
+                <div class="table-container" id="clientes-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Ubicación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-table">
+                            <tr><td colspan="7" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Empleados -->
+            <div id="empleados" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Empleados</h2>
+                    <button onclick="openModal('empleado')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="empleados-search" class="search-input" placeholder="Buscar empleados...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>DNI</th>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Tipo</th>
+                                <th>Fecha Ingreso</th>
+                                <th>Fecha Salida</th>
+                                <th>Lugar</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="empleados-table">
+                            <tr><td colspan="11" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Productos -->
+            <div id="productos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Productos</h2>
+                    <button onclick="openModal('producto')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="productos-search" class="search-input" placeholder="Buscar productos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productos-table">
+                            <tr><td colspan="6" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pedidos - ACTUALIZADA -->
+            <div id="pedidos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Pedidos</h2>
+                    <button onclick="openModal('pedido')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="pedidos-search" class="search-input" placeholder="Buscar pedidos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha Venta</th>
+                                <th>Fecha Entrega</th>
+                                <th>Total</th>
+                                <th>Opción Pago</th>
+                                <th>Tipo Pago</th>
+                                <th>Entrega</th>
+                                <th>Empleado</th>
+                                <th>Estado Servicio</th>
+                                <th>Fecha Pago Parcial</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pedidos-table">
+                            <tr><td colspan="12" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- compras -->
+            <div id="compras" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Compras</h2>
+                    <button onclick="openModal('compra')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="compras-search" class="search-input" placeholder="Buscar compras...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Compra</th>
+                                <th>Fecha Recepción</th>
+                                <th>Subtotal</th>
+                                <th>Flete</th>
+                                <th>Aduanas</th>
+                                <th>Total Final</th>
+                                <th>Tipo Pago</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compras-table">
+                            <tr><td colspan="11" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Pago -->
+            <div id="tipos-pago" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Pago</h2>
+                    <button onclick="openModal('tipo-pago')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-pago-search" class="search-input" placeholder="Buscar tipos de pago...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Detalle</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-pago-table">
+                            <tr><td colspan="3" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Trabajador -->
+            <div id="tipos-trabajador" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Trabajador</h2>
+                    <button onclick="openModal('tipo-trabajador')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-trabajador-search" class="search-input" placeholder="Buscar tipos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-trabajador-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!--  ------------------------------ -->
+
+            <!-- Reportes de Ventas -->
+    <div id="reportes-ventas" class="tab-content">
+        <div class="section-header">
+            <h2 class="section-title">Reportes de Ventas</h2>
+        </div>
+
+        <!-- Filtros de Ventas -->
+        <div class="filters-container">
+            <div class="filters-title">
+                <i data-lucide="filter"></i>
+                Filtros de Búsqueda
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Desde</label>
+                    <input type="date" id="ventas-fecha-desde" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Hasta</label>
+                    <input type="date" id="ventas-fecha-hasta" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Cliente</label>
+                    <select id="ventas-cliente" class="filter-select">
+                        <option value="">Todos los clientes</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Empleado</label>
+                    <select id="ventas-empleado" class="filter-select">
+                        <option value="">Todos los empleados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Estado</label>
+                    <select id="ventas-estado" class="filter-select">
+                        <option value="">Todos los estados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Tipo de Pago</label>
+                    <select id="ventas-tipo-pago" class="filter-select">
+                        <option value="">Todos los tipos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Monto Desde</label>
+                    <input type="number" id="ventas-monto-desde" class="filter-input" placeholder="S/ 0.00" step="0.01">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Monto Hasta</label>
+                    <input type="number" id="ventas-monto-hasta" class="filter-input" placeholder="S/ 0.00" step="0.01">
+                </div>
+            </div>
+            <div class="filters-actions">
+                <button onclick="window.reportesManager?.aplicarFiltrosVentas()" class="btn btn-primary">
+                    <i data-lucide="search"></i>
+                    Aplicar Filtros
+                </button>
+                <button onclick="window.reportesManager?.limpiarFiltrosVentas()" class="btn btn-secondary">
+                    <i data-lucide="x-circle"></i>
+                    Limpiar
+                </button>
+                <button onclick="window.reportesManager?.exportarVentas()" class="btn btn-export">
+                    <i data-lucide="download"></i>
+                    Exportar CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Estadísticas de Ventas -->
+        <div class="stats-grid" id="ventas-stats">
+            <div class="stat-card blue">
+                <div class="stat-number" id="ventas-total-registros">0</div>
+                <div class="stat-label">Total de Ventas</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-number" id="ventas-monto-total">S/ 0.00</div>
+                <div class="stat-label">Monto Total</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-number" id="ventas-promedio">S/ 0.00</div>
+                <div class="stat-label">Venta Promedio</div>
+            </div>
+            <div class="stat-card yellow">
+                <div class="stat-number" id="ventas-pendientes">0</div>
+                <div class="stat-label">Pendientes</div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Ventas -->
+        <div class="chart-container">
+            <div class="chart-title">Evolución de Ventas por Mes</div>
+            <canvas id="ventasChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Tabla de Ventas COMPLETA -->
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Pedido</th>
+                    <th>Cliente</th>
+                    <th>Fecha Venta</th>
+                    <th>Fecha Entrega</th>
+                    <th>Total</th>
+                    <th>Opción Pago</th>
+                    <th>Tipo Pago</th>
+                    <th>Entrega</th>
+                    <th>Empleado</th>
+                    <th>Estado Servicio</th>
+                    <th>Fecha Pago Parcial</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody id="ventas-table">
+                <tr><td colspan="12" class="text-center"><div class="loading"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+    </div>
+
+    <!-- Reportes de Compras -->
+    <div id="reportes-compras" class="tab-content">
+        <div class="section-header">
+            <h2 class="section-title">Reportes de Compras</h2>
+        </div>
+
+        <!-- Filtros de Compras -->
+        <div class="filters-container">
+            <div class="filters-title">
+                <i data-lucide="filter"></i>
+                Filtros de Búsqueda
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Desde</label>
+                    <input type="date" id="compras-fecha-desde" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Fecha Hasta</label>
+                    <input type="date" id="compras-fecha-hasta" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Proveedor</label>
+                    <select id="compras-proveedor" class="filter-select">
+                        <option value="">Todos los proveedores</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Estado</label>
+                    <select id="compras-estado" class="filter-select">
+                        <option value="">Todos los estados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Tipo de Pago</label>
+                    <select id="compras-tipo-pago" class="filter-select">
+                        <option value="">Todos los tipos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Monto Desde</label>
+                    <input type="number" id="compras-monto-desde" class="filter-input" placeholder="S/ 0.00" step="0.01">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Monto Hasta</label>
+                    <input type="number" id="compras-monto-hasta" class="filter-input" placeholder="S/ 0.00" step="0.01">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Incluir Flete</label>
+                    <select id="compras-incluir-flete" class="filter-select">
+                        <option value="">Todos</option>
+                        <option value="si">Con flete</option>
+                        <option value="no">Sin flete</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filters-actions">
+                <button onclick="window.reportesManager?.aplicarFiltrosCompras()" class="btn btn-primary">
+                    <i data-lucide="search"></i>
+                    Aplicar Filtros
+                </button>
+                <button onclick="window.reportesManager?.limpiarFiltrosCompras()" class="btn btn-secondary">
+                    <i data-lucide="x-circle"></i>
+                    Limpiar
+                </button>
+                <button onclick="window.reportesManager?.exportarCompras()" class="btn btn-export">
+                    <i data-lucide="download"></i>
+                    Exportar CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Estadísticas de Compras -->
+        <div class="stats-grid" id="compras-stats">
+            <div class="stat-card blue">
+                <div class="stat-number" id="compras-total-registros">0</div>
+                <div class="stat-label">Total de Compras</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-number" id="compras-subtotal">S/ 0.00</div>
+                <div class="stat-label">Subtotal</div>
+            </div>
+            <div class="stat-card yellow">
+                <div class="stat-number" id="compras-flete-total">S/ 0.00</div>
+                <div class="stat-label">Flete Total</div>
+            </div>
+            <div class="stat-card indigo">
+                <div class="stat-number" id="compras-aduanas-total">S/ 0.00</div>
+                <div class="stat-label">Aduanas Total</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-number" id="compras-total-final">S/ 0.00</div>
+                <div class="stat-label">Total Final</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-number" id="compras-promedio">S/ 0.00</div>
+                <div class="stat-label">Compra Promedio</div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Compras -->
+        <div class="chart-container">
+            <div class="chart-title">Evolución de Compras por Mes</div>
+            <canvas id="comprasChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Tabla de Compras -->
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>N° Compra</th>
+                        <th>Fecha Compra</th>
+                        <th>Proveedor</th>
+                        <th>Subtotal</th>
+                        <th>Flete</th>
+                        <th>Aduanas</th>
+                        <th>Total Final</th>
+                        <th>Tipo Pago</th>
+                        <th>Estado</th>
+                        <th>Fecha Recepción</th>
+                    </tr>
+                </thead>
+                <tbody id="compras-table">
+                    <tr><td colspan="10" class="text-center"><div class="loading"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+            <!-- Proveedores -->
+            <div id="proveedores" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Proveedores</h2>
+                    <button onclick="openModal('proveedor')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="proveedores-search" class="search-input" placeholder="Buscar proveedores...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Dirección</th>
+                                <th>Lugar</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proveedores-table">
+                            <tr><td colspan="7" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Estados -->
+            <div id="estados" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Estados</h2>
+                    <button onclick="openModal('estado')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="estados-search" class="search-input" placeholder="Buscar estados...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estados-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Entregas -->
+            <div id="entregas" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Entregas</h2>
+                    <button onclick="openModal('entrega')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="entregas-search" class="search-input" placeholder="Buscar entregas...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entregas-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Contacto -->
+            <div id="tipos-contacto" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Contacto</h2>
+                    <button onclick="openModal('tipos-contacto')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-contacto-search" class="search-input" placeholder="Buscar tipos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-contacto-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" class="modal-title">Agregar Registro</h3>
+                <button onclick="closeModal()" class="close-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="modal-form">
+                <div id="modal-fields"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save"></i>
+                        Guardar
+                    </button>
+                    <button type="button" onclick="closeModal()" class="btn btn-danger">
+                        <i data-lucide="x"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="js/utils/validation.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/searchManager.js"></script>
+    <script src="js/config/firebase.js"></script>
+    <script src="js/services/cacheService.js"></script>
+    <script src="js/services/dataService.js"></script>
+    <script src="js/services/notificationService.js"></script>
+    <script src="js/components/modalManager.js"></script>
+    <script src="js/components/paginationManager.js"></script>
+    <script src="js/components/pedidoDetalleManager.js"></script>
+    <script src="js/components/compraDetalleManager.js"></script>
+    <script src="js/components/reportesManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

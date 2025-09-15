@@ -1,0 +1,662 @@
+<!-- ===== SOLUCIÓN DEFINITIVA PARA login.html ===== -->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Novo CRM</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: white;
+            font-size: 0.875rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 0.875rem;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #059669, #047857);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fecaca;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #a7f3d0;
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .demo-accounts {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .demo-accounts h3 {
+            color: white;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .demo-account {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .debug-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .debug-section h3 {
+            color: white;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Novo CRM</h1>
+            <p>Inicie sesión para acceder al sistema</p>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <!-- Formulario de Login -->
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <i data-lucide="mail" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                    Email
+                </label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    class="form-input" 
+                    placeholder="tu@email.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i data-lucide="lock" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                    Contraseña
+                </label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="form-input" 
+                    placeholder="••••••••"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="login-btn">
+                <span id="login-text">
+                    <i data-lucide="log-in"></i>
+                    Iniciar Sesión
+                </span>
+                <span id="login-loading" class="hidden">
+                    <div class="loading"></div>
+                    Iniciando sesión...
+                </span>
+            </button>
+        </form>
+
+        <!-- Sección de Debug - Solo visible cuando hay problemas -->
+        <div id="debug-section" class="debug-section hidden">
+            <h3>🔧 Herramientas de Debug</h3>
+            <button type="button" onclick="forceLogout()" class="btn btn-secondary" style="margin-bottom: 0.5rem;">
+                <i data-lucide="log-out"></i>
+                Forzar Logout
+            </button>
+            <button type="button" onclick="goToIndex()" class="btn btn-secondary" style="margin-bottom: 0.5rem;">
+                <i data-lucide="arrow-right"></i>
+                Ir Manualmente al Sistema
+            </button>
+            <button type="button" onclick="showDebugInfo()" class="btn btn-secondary">
+                <i data-lucide="info"></i>
+                Mostrar Info Debug
+            </button>
+        </div>
+
+        <!-- Cuentas demo para testing -->
+        <div class="demo-accounts">
+            <h3>👥 Cuentas de Prueba</h3>
+            <div class="demo-account">
+                <span><strong>Admin:</strong> admin@novo.com</span>
+                <span>Pass: admin123</span>
+            </div>
+            <div class="demo-account">
+                <span><strong>Manager:</strong> manager@novo.com</span>
+                <span>Pass: manager123</span>
+            </div>
+            <div class="demo-account">
+                <span><strong>Empleado:</strong> empleado@novo.com</span>
+                <span>Pass: empleado123</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURACIÓN FIREBASE =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyBlzaQCL7M98QeifzkEMZ4d8deC7oHqCT0",
+            authDomain: "novo-crm-e9779.firebaseapp.com",
+            projectId: "novo-crm-e9779",
+            storageBucket: "novo-crm-e9779.firebasestorage.app",
+            messagingSenderId: "43652899432",
+            appId: "1:43652899432:web:6c787bced791b8ea6d91dd"
+        };
+
+        // Variables globales
+        let auth;
+        let db;
+        let isRedirecting = false;
+        let authStateChangeCount = 0;
+
+        // ===== INICIALIZAR FIREBASE =====
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            console.log('✅ Firebase inicializado correctamente en login');
+        } catch (error) {
+            console.error('❌ Error inicializando Firebase:', error);
+        }
+
+        // ===== FUNCIONES GLOBALES DE DEBUG =====
+        window.forceLogout = async function() {
+            try {
+                console.log('🔄 Ejecutando logout forzado...');
+                await auth.signOut();
+                isRedirecting = false;
+                authStateChangeCount = 0;
+                showAlert('Logout exitoso. Puedes iniciar sesión nuevamente.', 'success');
+                hideDebugSection();
+            } catch (error) {
+                console.error('Error en logout forzado:', error);
+                showAlert('Error en logout: ' + error.message, 'error');
+            }
+        };
+
+        window.goToIndex = function() {
+            console.log('🚀 Redirección manual a index.html');
+            window.open('./index.html', '_self');
+        };
+
+        window.showDebugInfo = function() {
+            const user = auth.currentUser;
+            const info = `
+                URL Actual: ${window.location.href}
+                Usuario: ${user ? user.email : 'No autenticado'}
+                isRedirecting: ${isRedirecting}
+                authStateChangeCount: ${authStateChangeCount}
+                Pathname: ${window.location.pathname}
+            `;
+            alert('Debug Info:\n\n' + info);
+        };
+
+        // ===== FUNCIONES AUXILIARES =====
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+        }
+
+        function clearAlerts() {
+            document.getElementById('alert-container').innerHTML = '';
+        }
+
+        function showDebugSection() {
+            document.getElementById('debug-section').classList.remove('hidden');
+        }
+
+        function hideDebugSection() {
+            document.getElementById('debug-section').classList.add('hidden');
+        }
+
+        function setLoading(loading) {
+            const loginBtn = document.getElementById('login-btn');
+            const loginText = document.getElementById('login-text');
+            const loginLoading = document.getElementById('login-loading');
+            
+            loginBtn.disabled = loading;
+            
+            if (loading) {
+                loginText.classList.add('hidden');
+                loginLoading.classList.remove('hidden');
+            } else {
+                loginText.classList.remove('hidden');
+                loginLoading.classList.add('hidden');
+            }
+        }
+
+        // ===== LOGIN MANAGER MEJORADO =====
+        class EnhancedLoginManager {
+            constructor() {
+                this.form = document.getElementById('login-form');
+                this.emailInput = document.getElementById('email');
+                this.passwordInput = document.getElementById('password');
+                
+                this.setupEventListeners();
+                this.monitorAuthState();
+            }
+
+            monitorAuthState() {
+                console.log('🔍 Iniciando monitoreo de autenticación...');
+                
+                // 🔥 PREVENIR BUCLES: Solo un listener de auth state
+                auth.onAuthStateChanged(async (user) => {
+                    authStateChangeCount++;
+                    console.log(`👤 Auth state change #${authStateChangeCount}:`, user ? user.email : 'No user');
+                    
+                    if (user && !isRedirecting) {
+                        // Usuario está autenticado
+                        console.log('✅ Usuario autenticado:', user.email);
+                        
+                        // 🔥 PREVENIR BUCLES: Solo redirigir si estamos en login
+                        if (this.shouldRedirect()) {
+                            await this.handleAuthenticatedUser(user);
+                        } else {
+                            console.log('⏸️ Redirección no necesaria o ya en proceso');
+                        }
+                    } else if (!user) {
+                        // Usuario no autenticado
+                        console.log('❌ Usuario no autenticado');
+                        isRedirecting = false;
+                        hideDebugSection();
+                        this.showLoginForm();
+                    }
+                });
+
+                // 🔥 TIMEOUT DE SEGURIDAD: Si pasa mucho tiempo, mostrar debug
+                setTimeout(() => {
+                    if (authStateChangeCount > 3 && isRedirecting) {
+                        console.warn('⚠️ Posible bucle detectado, mostrando opciones de debug');
+                        showAlert('Problema de redirección detectado. Usa las herramientas de debug.', 'warning');
+                        showDebugSection();
+                    }
+                }, 10000); // 10 segundos
+            }
+
+            shouldRedirect() {
+                const currentPath = window.location.pathname.toLowerCase();
+                const isLoginPage = currentPath.includes('login.html') || currentPath.endsWith('login.html') || currentPath === '/' || currentPath === '';
+                
+                console.log('🤔 Should redirect?', {
+                    currentPath,
+                    isLoginPage,
+                    isRedirecting
+                });
+                
+                return isLoginPage && !isRedirecting;
+            }
+
+            async handleAuthenticatedUser(user) {
+                if (isRedirecting) return;
+                
+                console.log('🔄 Manejando usuario autenticado...');
+                isRedirecting = true;
+
+                try {
+                    // Verificar datos del usuario
+                    const userDoc = await db.collection('usuarios').doc(user.uid).get();
+                    
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        
+                        if (userData.activo) {
+                            console.log(`✅ Usuario verificado: ${userData.nombre} (${userData.rol})`);
+                            
+                            showAlert(`¡Bienvenido ${userData.nombre}! Redirigiendo al sistema...`, 'success');
+                            
+                            // 🔥 REDIRECCIÓN MEJORADA con múltiples intentos
+                            this.attemptRedirect();
+                            
+                        } else {
+                            throw new Error('Usuario desactivado. Contacta al administrador.');
+                        }
+                    } else {
+                        throw new Error('Perfil de usuario no encontrado.');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error verificando usuario:', error);
+                    isRedirecting = false;
+                    showAlert('Error verificando usuario: ' + error.message, 'error');
+                    showDebugSection();
+                }
+            }
+                /*
+            attemptRedirect() {
+                let attempts = 0;
+                const maxAttempts = 3;
+                
+                const tryRedirect = () => {
+                    attempts++;
+                    console.log(`🚀 Intento de redirección #${attempts}`);
+                    
+                    try {
+                        // Método 1: replace
+                        if (attempts === 1) {
+                            window.location.replace('./index.html');
+                        }
+                        // Método 2: href
+                        else if (attempts === 2) {
+                            window.location.href = './index.html';
+                        }
+                        // Método 3: open
+                        else if (attempts === 3) {
+                            window.open('./index.html', '_self');
+                        }
+                    } catch (error) {
+                        console.error(`Error en intento ${attempts}:`, error);
+                        
+                        if (attempts < maxAttempts) {
+                            setTimeout(tryRedirect, 1000);
+                        } else {
+                            console.error('❌ Todos los métodos de redirección fallaron');
+                            showAlert('Redirección automática falló. Usa el botón "Ir Manualmente al Sistema".', 'warning');
+                            showDebugSection();
+                            isRedirecting = false;
+                        }
+                    }
+                };
+
+                // Iniciar primer intento después de mostrar el mensaje
+                setTimeout(tryRedirect, 2000);
+                
+                // Timeout final de seguridad
+                setTimeout(() => {
+                    if (isRedirecting && window.location.pathname.includes('login.html')) {
+                        console.warn('⚠️ Redirección falló después de todos los intentos');
+                        showDebugSection();
+                        isRedirecting = false;
+                    }
+                }, 10000);
+            }
+                */
+
+            attemptRedirect() {
+                console.log('🚀 Redirigiendo a index temporal...');
+                
+                // Redirigir al index temporal en lugar del original
+                setTimeout(() => {
+                    window.location.href = './index.html';
+                }, 2000);
+            }
+            
+            showLoginForm() {
+                // Mostrar formulario de login y ocultar mensajes
+                clearAlerts();
+                setLoading(false);
+            }
+
+            setupEventListeners() {
+                this.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+
+                this.emailInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.passwordInput.focus();
+                    }
+                });
+
+                this.passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.handleLogin();
+                    }
+                });
+
+                this.emailInput.addEventListener('input', clearAlerts);
+                this.passwordInput.addEventListener('input', clearAlerts);
+            }
+
+            async handleLogin() {
+                const email = this.emailInput.value.trim();
+                const password = this.passwordInput.value;
+
+                if (!email || !password) {
+                    showAlert('Por favor ingresa email y contraseña', 'error');
+                    return;
+                }
+
+                try {
+                    setLoading(true);
+                    clearAlerts();
+
+                    console.log('🔐 Intentando login con:', email);
+
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    console.log('✅ Login exitoso:', userCredential.user.email);
+
+                    // El resto se maneja automáticamente por onAuthStateChanged
+                    
+                } catch (error) {
+                    console.error('❌ Error en login:', error);
+                    
+                    let errorMessage = 'Error al iniciar sesión';
+                    
+                    switch (error.code) {
+                        case 'auth/user-not-found':
+                            errorMessage = 'Usuario no encontrado';
+                            break;
+                        case 'auth/wrong-password':
+                            errorMessage = 'Contraseña incorrecta';
+                            break;
+                        case 'auth/invalid-email':
+                            errorMessage = 'Email inválido';
+                            break;
+                        case 'auth/user-disabled':
+                            errorMessage = 'Usuario deshabilitado';
+                            break;
+                        case 'auth/too-many-requests':
+                            errorMessage = 'Demasiados intentos. Intenta más tarde';
+                            break;
+                        default:
+                            errorMessage = error.message;
+                            break;
+                    }
+                    
+                    showAlert(errorMessage, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }
+        }
+
+        // ===== INICIALIZAR =====
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar iconos
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // Inicializar login manager después de un breve delay
+            setTimeout(() => {
+                window.loginManager = new EnhancedLoginManager();
+                console.log('✅ Enhanced Login Manager inicializado');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

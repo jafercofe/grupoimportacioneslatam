@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo CRM - Temporal</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 ¡ÉXITO!</h1>
+            <p>Login funcionando correctamente - Usuario: Administrador</p>
+        </div>
+        
+        <div class="alert" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #a7f3d0; padding: 1rem; margin: 2rem 0; border-radius: 0.5rem;">
+            <strong>✅ Sistema Funcionando:</strong><br>
+            - Login exitoso<br>  
+            - Usuario verificado: admin@novo.com<br>
+            - Rol: SUPER_ADMIN<br><br>
+            <strong>📋 Próximo Paso:</strong> Implementar sistema completo de autenticación
+        </div>
+        
+        <button onclick="goToLogin()" class="btn btn-primary">
+            🔄 Volver al Login para Probar
+        </button>
+    </div>
+    
+    <script>
+        function goToLogin() {
+            window.location.href = 'login.html';
+        }
+        console.log('✅ Index temporal cargado - Sistema funcionando!');
+    </script>
+</body>
+</html>

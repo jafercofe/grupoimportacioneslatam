@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo CRM - Sistema de Gestión Completo</title>
+    
+    <!-- Error Suppressor -->
+    <script>
+    (function() {
+        'use strict';
+        
+        window.addEventListener('unhandledrejection', function(event) {
+            const errorMsg = event.reason?.message || String(event.reason) || '';
+            
+            const errorsToIgnore = [
+                'message channel closed',
+                'Extension context invalidated',
+                'The message port closed',
+                'Could not establish connection',
+                'Receiving end does not exist'
+            ];
+            
+            if (errorsToIgnore.some(error => errorMsg.toLowerCase().includes(error.toLowerCase()))) {
+                console.warn('[SUPPRESSED] Extension/Channel error:', errorMsg);
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('error', function(event) {
+            const errorMsg = event.message || '';
+            
+            if (errorMsg.includes('message channel closed') || 
+                errorMsg.includes('Extension context invalidated')) {
+                console.warn('[SUPPRESSED] Global error:', errorMsg);
+                event.preventDefault();
+                return false;
+            }
+        });
+    })();
+    </script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/performance.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Novo CRM</h1>
+            <p>Sistema de Gestión de Relaciones con Clientes</p>
+        </div>
+
+        <div id="connection-alert" class="alert alert-error hidden">
+            Error de conexión con Firebase.
+        </div>
+
+        <nav class="nav">
+            <div class="nav-buttons">
+                <button onclick="crmApp?.showTab('dashboard')" class="nav-btn active" data-tab="dashboard">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="crmApp?.showTab('clientes')" class="nav-btn" data-tab="clientes">
+                    <i data-lucide="users"></i>
+                    <span>Clientes</span>
+                </button>
+                <button onclick="crmApp?.showTab('empleados')" class="nav-btn" data-tab="empleados">
+                    <i data-lucide="user-check"></i>
+                    <span>Empleados</span>
+                </button>
+                <button onclick="crmApp?.showTab('productos')" class="nav-btn" data-tab="productos">
+                    <i data-lucide="package"></i>
+                    <span>Productos</span>
+                </button>
+                <button onclick="crmApp?.showTab('pedidos')" class="nav-btn" data-tab="pedidos">
+                    <i data-lucide="shopping-cart"></i>
+                    <span>Pedidos</span>
+                </button>
+                <button onclick="crmApp?.showTab('compras')" class="nav-btn" data-tab="compras">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </button>
+                <button onclick="crmApp?.showTab('proveedores')" class="nav-btn" data-tab="proveedores">
+                    <i data-lucide="truck"></i>
+                    <span>Proveedores</span>
+                </button>
+                <button onclick="crmApp?.showTab('estados')" class="nav-btn" data-tab="estados">
+                    <i data-lucide="flag"></i>
+                    <span>Estados</span>
+                </button>
+                <button onclick="crmApp?.showTab('entregas')" class="nav-btn" data-tab="entregas">
+                    <i data-lucide="package-check"></i>
+                    <span>Entregas</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-contacto')" class="nav-btn" data-tab="tipos-contacto">
+                    <i data-lucide="contact"></i>
+                    <span>Tipos Contacto</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-pago')" class="nav-btn" data-tab="tipos-pago">
+                    <i data-lucide="credit-card"></i>
+                    <span>Tipos Pago</span>
+                </button>
+                <button onclick="crmApp?.showTab('tipos-trabajador')" class="nav-btn" data-tab="tipos-trabajador">
+                    <i data-lucide="briefcase"></i>
+                    <span>Tipos Trabajador</span>
+                </button>
+                <button onclick="crmApp?.showTab('reportes-ventas')" class="nav-btn" data-tab="reportes-ventas">
+                    <i data-lucide="trending-up"></i>
+                    <span>Reportes Ventas</span>
+                </button>
+                <button onclick="crmApp?.showTab('reportes-compras')" class="nav-btn" data-tab="reportes-compras">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Reportes Compras</span>
+                </button>
+                <button onclick="crmApp?.showTab('reportes-productos')" class="nav-btn" data-tab="reportes-productos">
+                    <i data-lucide="package"></i>
+                    <span>Reportes Productos</span>
+                </button>
+                <button onclick="crmApp?.showTab('balance')" class="nav-btn" data-tab="balance">
+                    <i data-lucide="trending-up"></i>
+                    <span>Balance</span>
+                </button>
+                <button onclick="crmApp?.showTab('cambiar-password')" class="nav-btn" data-tab="cambiar-password">
+                    <i data-lucide="key"></i>
+                    <span>Cambiar Contraseñas</span>
+                </button>
+                <button onclick="crmApp?.showTab('permisos')" class="nav-btn" data-tab="permisos" id="permisos-nav-btn">
+                    <i data-lucide="shield-check"></i>
+                    <span>Permisos</span>
+                </button>
+            </div>
+        </nav>
+
+        <div class="content-area">
+            <!-- Dashboard -->
+            <div id="dashboard" class="tab-content active">
+                <h2 class="section-title text-center">Panel de Control</h2>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="loading"></div>
+                </div>
+            </div>
+
+            <!-- Clientes -->
+            <div id="clientes" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Clientes</h2>
+                    <button onclick="openModal('cliente')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="clientes-search" class="search-input" placeholder="Buscar clientes...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Ubicación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-table">
+                            <tr><td colspan="7" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Empleados -->
+            <div id="empleados" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Empleados</h2>
+                    <button onclick="openModal('empleado')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="empleados-search" class="search-input" placeholder="Buscar empleados...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>DNI</th>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                                <th>Tipo</th>
+                                <th>Fecha Ingreso</th>
+                                <th>Fecha Salida</th>
+                                <th>Lugar</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="empleados-table">
+                            <tr><td colspan="11" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Productos -->
+            <div id="productos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Productos</h2>
+                    <button onclick="openModal('producto')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="productos-search" class="search-input" placeholder="Buscar productos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productos-table">
+                            <tr><td colspan="6" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pedidos -->
+            <div id="pedidos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Pedidos</h2>
+                    <button onclick="openModal('pedido')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="pedidos-search" class="search-input" placeholder="Buscar pedidos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha Venta</th>
+                                <th>Fecha Entrega</th>
+                                <th>Total</th>
+                                <th>Opción Pago</th>
+                                <th>Tipo Pago</th>
+                                <th>Entrega</th>
+                                <th>Empleado</th>
+                                <th>Estado Servicio</th>
+                                <th>Fecha Pago Parcial</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pedidos-table">
+                            <tr><td colspan="12" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Compras -->
+            <div id="compras" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Compras</h2>
+                    <button onclick="openModal('compra')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="compras-search" class="search-input" placeholder="Buscar compras...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Compra</th>
+                                <th>Fecha Recepción</th>
+                                <th>Subtotal</th>
+                                <th>Flete</th>
+                                <th>Aduanas</th>
+                                <th>Total Final</th>
+                                <th>Tipo Pago</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compras-table">
+                            <tr><td colspan="11" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Proveedores -->
+            <div id="proveedores" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Proveedores</h2>
+                    <button onclick="openModal('proveedor')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="proveedores-search" class="search-input" placeholder="Buscar proveedores...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Dirección</th>
+                                <th>Lugar</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proveedores-table">
+                            <tr><td colspan="7" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Estados -->
+            <div id="estados" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Estados</h2>
+                    <button onclick="openModal('estado')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="estados-search" class="search-input" placeholder="Buscar estados...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estados-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Entregas -->
+            <div id="entregas" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Entregas</h2>
+                    <button onclick="openModal('entrega')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="entregas-search" class="search-input" placeholder="Buscar entregas...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entregas-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Contacto -->
+            <div id="tipos-contacto" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Contacto</h2>
+                    <button onclick="openModal('tipos-contacto')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-contacto-search" class="search-input" placeholder="Buscar tipos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-contacto-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Pago -->
+            <div id="tipos-pago" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Pago</h2>
+                    <button onclick="openModal('tipo-pago')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-pago-search" class="search-input" placeholder="Buscar tipos de pago...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Detalle</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-pago-table">
+                            <tr><td colspan="3" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tipos de Trabajador -->
+            <div id="tipos-trabajador" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Tipos de Trabajador</h2>
+                    <button onclick="openModal('tipo-trabajador')" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Agregar
+                    </button>
+                </div>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="tipos-trabajador-search" class="search-input" placeholder="Buscar tipos...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tipos-trabajador-table">
+                            <tr><td colspan="2" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reportes Ventas -->
+            <div id="reportes-ventas" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Reportes de Ventas</h2>
+                    <div class="flex gap-2">
+                        <button onclick="reportesManager?.generarReporteVentas()" class="btn btn-primary">
+                            <i data-lucide="download"></i>
+                            Exportar Excel
+                        </button>
+                        <button onclick="reportesManager?.actualizarDatos()" class="btn btn-warning">
+                            <i data-lucide="refresh-cw"></i>
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-number" id="total-ventas">0</div>
+                        <div class="stat-label">Total Ventas</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-number" id="suma-ventas">S/ 0</div>
+                        <div class="stat-label">Monto Total</div>
+                    </div>
+                    <div class="stat-card yellow">
+                        <div class="stat-number" id="promedio-ventas">S/ 0</div>
+                        <div class="stat-label">Promedio</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-number" id="mes-actual-ventas">S/ 0</div>
+                        <div class="stat-label">Mes Actual</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportes-ventas-table">
+                            <tr><td colspan="5" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reportes Compras -->
+            <div id="reportes-compras" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Reportes de Compras</h2>
+                    <div class="flex gap-2">
+                        <button onclick="reportesManager?.generarReporteCompras()" class="btn btn-primary">
+                            <i data-lucide="download"></i>
+                            Exportar Excel
+                        </button>
+                        <button onclick="reportesManager?.actualizarDatos()" class="btn btn-warning">
+                            <i data-lucide="refresh-cw"></i>
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card indigo">
+                        <div class="stat-number" id="total-compras">0</div>
+                        <div class="stat-label">Total Compras</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-number" id="suma-compras">S/ 0</div>
+                        <div class="stat-label">Monto Total</div>
+                    </div>
+                    <div class="stat-card yellow">
+                        <div class="stat-number" id="promedio-compras">S/ 0</div>
+                        <div class="stat-label">Promedio</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-number" id="mes-actual-compras">S/ 0</div>
+                        <div class="stat-label">Mes Actual</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Proveedor</th>
+                                <th>Fecha</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportes-compras-table">
+                            <tr><td colspan="5" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reportes Productos -->
+            <div id="reportes-productos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Reportes de Productos</h2>
+                    <button onclick="reportesProductos?.exportarExcel()" class="btn btn-primary">
+                        <i data-lucide="download"></i>
+                        Exportar Excel
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-number" id="total-productos-stock">0</div>
+                        <div class="stat-label">Productos en Stock</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-number" id="productos-sin-stock">0</div>
+                        <div class="stat-label">Sin Stock</div>
+                    </div>
+                    <div class="stat-card yellow">
+                        <div class="stat-number" id="productos-bajo-stock">0</div>
+                        <div class="stat-label">Bajo Stock</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Stock</th>
+                                <th>Precio</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportes-productos-table">
+                            <tr><td colspan="5" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Balance -->
+            <div id="balance" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Balance de Ingresos y Egresos</h2>
+                    <div class="flex gap-2">
+                        <button onclick="balanceManager?.calcularAutomatico()" class="btn btn-primary">
+                            <i data-lucide="calculator"></i>
+                            Calcular Balance
+                        </button>
+                        <button onclick="balanceManager?.exportarBalance()" class="btn btn-warning">
+                            <i data-lucide="download"></i>
+                            Exportar Excel
+                        </button>
+                        <button onclick="balanceManager?.limpiarBalance()" class="btn btn-danger">
+                            <i data-lucide="trash-2"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div>
+                        <label class="form-label">Fecha Desde</label>
+                        <input type="date" id="balance-fecha-desde" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Fecha Hasta</label>
+                        <input type="date" id="balance-fecha-hasta" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Incluir Datos Automáticos</label>
+                        <select id="balance-incluir-automaticos" class="form-select">
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <!-- Ingresos -->
+                    <div>
+                        <h3 style="color: white; margin-bottom: 1rem;">INGRESOS</h3>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th>Monto (S/)</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ingresos-table">
+                                </tbody>
+                            </table>
+                        </div>
+                        <button onclick="balanceManager?.agregarFila('ingresos')" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            <i data-lucide="plus"></i>
+                            Agregar Ingreso
+                        </button>
+                        <div style="text-align: right; margin-top: 1rem; color: white;">
+                            <strong>Subtotal: <span id="subtotal-ingresos">S/ 0.00</span></strong>
+                        </div>
+                    </div>
+
+                    <!-- Egresos -->
+                    <div>
+                        <h3 style="color: white; margin-bottom: 1rem;">EGRESOS</h3>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th>Monto (S/)</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="egresos-table">
+                                </tbody>
+                            </table>
+                        </div>
+                        <button onclick="balanceManager?.agregarFila('egresos')" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            <i data-lucide="plus"></i>
+                            Agregar Egreso
+                        </button>
+                        <div style="text-align: right; margin-top: 1rem; color: white;">
+                            <strong>Subtotal: <span id="subtotal-egresos">S/ 0.00</span></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Totales -->
+                <div class="stats-grid">
+                    <div class="stat-card green">
+                        <div class="stat-number" id="total-ingresos">S/ 0.00</div>
+                        <div class="stat-label">Total Ingresos</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-number" id="total-egresos">S/ 0.00</div>
+                        <div class="stat-label">Total Egresos</div>
+                    </div>
+                    <div class="stat-card blue" id="balance-resultado">
+                        <div class="stat-number" id="balance-final">S/ 0.00</div>
+                        <div class="stat-label">Balance Final</div>
+                    </div>
+                </div>
+
+                <!-- Análisis -->
+                <div style="background: rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1.5rem; margin-top: 2rem;">
+                    <h3 style="color: white; margin-bottom: 1rem;">📊 Análisis del Balance</h3>
+                    <div id="balance-analisis-texto" style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                        Seleccione un período y haga clic en "Calcular Balance" para ver el análisis.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cambiar Contraseñas -->
+            <div id="cambiar-password" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Cambiar Contraseñas</h2>
+                </div>
+
+                <div style="max-width: 500px; margin: 0 auto;">
+                    <div class="form-group">
+                        <label class="form-label">Contraseña Actual</label>
+                        <input type="password" id="current-password" class="form-input" placeholder="Ingresa tu contraseña actual">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nueva Contraseña</label>
+                        <input type="password" id="new-password" class="form-input" placeholder="Ingresa la nueva contraseña">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Confirmar Nueva Contraseña</label>
+                        <input type="password" id="confirm-password" class="form-input" placeholder="Confirma la nueva contraseña">
+                    </div>
+
+                    <button onclick="passwordManager?.cambiarPassword()" class="btn btn-primary" style="width: 100%;">
+                        <i data-lucide="key"></i>
+                        Cambiar Contraseña
+                    </button>
+                </div>
+            </div>
+
+            <!-- Permisos -->
+            <div id="permisos" class="tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">Gestión de Permisos</h2>
+                    <div class="flex gap-2">
+                        <button onclick="permissionTabManager?.guardarCambios()" class="btn btn-primary">
+                            <i data-lucide="save"></i>
+                            Guardar Cambios
+                        </button>
+                        <button onclick="permissionTabManager?.recargarDatos()" class="btn btn-warning">
+                            <i data-lucide="refresh-cw"></i>
+                            Recargar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-controls">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="permisos-search" class="search-input" placeholder="Buscar usuarios...">
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Email</th>
+                                <th>Rol Actual</th>
+                                <th>Estado</th>
+                                <th>Último Acceso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permisos-table">
+                            <tr><td colspan="6" class="text-center"><div class="loading"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Leyenda de Roles -->
+                <div style="margin-top: 2rem; background: rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1.5rem;">
+                    <h3 style="color: white; margin-bottom: 1rem;">🛡️ Roles del Sistema</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div>
+                            <strong style="color: #ef4444;">SUPER_ADMIN</strong>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Acceso completo a todo el sistema</p>
+                        </div>
+                        <div>
+                            <strong style="color: #3b82f6;">ADMIN</strong>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Gestión completa + permisos</p>
+                        </div>
+                        <div>
+                            <strong style="color: #10b981;">MANAGER</strong>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Gestión general + reportes</p>
+                        </div>
+                        <div>
+                            <strong style="color: #f59e0b;">EMPLOYEE</strong>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Operaciones básicas</p>
+                        </div>
+                        <div>
+                            <strong style="color: #6b7280;">VIEWER</strong>
+                            <p style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">Solo lectura</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Principal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" class="modal-title">Agregar Registro</h3>
+                <button onclick="closeModal()" class="close-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <form id="modal-form">
+                <div id="modal-fields"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save"></i>
+                        Guardar
+                    </button>
+                    <button type="button" onclick="closeModal()" class="btn btn-danger">
+                        <i data-lucide="x"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Permisos -->
+    <div id="modal-permisos" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="modal-permisos-title" class="modal-title">Editar Permisos</h3>
+                <button onclick="permissionTabManager?.closeModal()" class="close-btn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Usuario</label>
+                    <input type="text" id="permisos-usuario-info" class="form-input" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Rol</label>
+                    <select id="permisos-rol-select" class="form-select">
+                        <option value="SUPER_ADMIN">Super Administrador</option>
+                        <option value="ADMIN">Administrador</option>
+                        <option value="MANAGER">Gerente</option>
+                        <option value="EMPLOYEE">Empleado</option>
+                        <option value="VIEWER">Solo Lectura</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Estado</label>
+                    <select id="permisos-estado-select" class="form-select">
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button onclick="permissionTabManager?.guardarPermisos()" class="btn btn-primary">
+                        <i data-lucide="save"></i>
+                        Guardar Cambios
+                    </button>
+                    <button onclick="permissionTabManager?.closeModal()" class="btn btn-danger">
+                        <i data-lucide="x"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files - ORDEN CORREGIDO PARA COMPATIBILIDAD -->
+    <script src="js/utils/validation.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/errorHandler.js"></script>
+    <script src="js/utils/SearchManager.js"></script>
+    
+    <!-- Config y Services -->
+    <script src="js/config/firebase.js"></script>
+    <script src="js/services/cacheService.js"></script>
+    <script src="js/services/dataService.js"></script>
+    <script src="js/services/notificationService.js"></script>
+    <!-- USAR TU SISTEMA EXISTENTE -->
+    <script src="js/services/authService.js"></script>
+    <!-- SI QUIERES USAR EL HÍBRIDO, DESCOMENTA LA SIGUIENTE LÍNEA: -->
+    <!-- <script src="js/services/hybridAuthService.js"></script> -->
+    <script src="js/middleware/authMiddleware.js"></script>
+    
+    <!-- Components -->
+    <script src="js/components/modalManager.js"></script>
+    <script src="js/components/paginationManager.js"></script>
+    <script src="js/components/pedidoDetalleManager.js"></script>
+    <script src="js/components/compraDetalleManager.js"></script>
+    <script src="js/components/balanceManager.js"></script>
+    <script src="js/components/reportesManager.js"></script>
+    <script src="js/components/reportesProductos.js"></script>
+    <script src="js/components/passwordManager.js"></script>
+    <script src="js/components/permissionTabManager.js"></script>
+    <script src="js/components/loginManager.js"></script>
+    
+    <!-- Main Application -->
+    <script src="js/main.js"></script>
+
+    <style>
+    /* Estilos adicionales para balance */
+    .fila-automatica {
+        background: rgba(59, 130, 246, 0.1) !important;
+    }
+    
+    .fila-manual {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .btn-remove {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 0.75rem;
+    }
+    
+    .auto-label {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .balance-resultado.ganancia {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
+    }
+    
+    .balance-resultado.perdida {
+        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    }
+    
+    /* Estilos para permisos */
+    .role-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .role-super-admin { background: #ef4444; color: white; }
+    .role-admin { background: #3b82f6; color: white; }
+    .role-manager { background: #10b981; color: white; }
+    .role-employee { background: #f59e0b; color: white; }
+    .role-viewer { background: #6b7280; color: white; }
+    
+    .status-active { 
+        background: rgba(16, 185, 129, 0.1); 
+        color: #10b981; 
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    
+    .status-inactive { 
+        background: rgba(239, 68, 68, 0.1); 
+        color: #ef4444; 
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    /* Estilos responsivos adicionales */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .section-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .nav-buttons {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    </style>
+
+    <script>
+    // Funciones globales adicionales para compatibilidad
+    window.logout = function() {
+        if (window.crmApp && window.crmApp.logout) {
+            window.crmApp.logout();
+        } else if (window.authService) {
+            window.authService.logout().then(() => {
+                window.location.replace('login.html');
+            });
+        }
+    };
+
+    // Función para verificar estado de autenticación
+    window.checkAuthState = function() {
+        return window.authService ? window.authService.isAuthenticated() : false;
+    };
+
+    // Función para obtener usuario actual
+    window.getCurrentUser = function() {
+        return window.authService ? window.authService.getCurrentUser() : null;
+    };
+
+    // Debug para desarrollo
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log(`
+        🔧 MODO DESARROLLO DETECTADO
+        
+        Comandos disponibles:
+        - window.crmDebug: Herramientas de debug
+        - window.getCurrentUser(): Info del usuario actual
+        - window.checkAuthState(): Estado de autenticación
+        - window.logout(): Cerrar sesión
+        
+        Usuarios de desarrollo:
+        - admin@dev.com / admin123 (Super Admin)
+        - manager@dev.com / manager123 (Manager)
+        - empleado@dev.com / empleado123 (Employee)
+        - viewer@dev.com / viewer123 (Viewer)
+        `);
+    }
+    </script>
+</body>
+</html>

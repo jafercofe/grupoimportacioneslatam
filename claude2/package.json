@@ -1,0 +1,10 @@
+{
+  "name": "novo-crm",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "serve": "firebase serve",
+    "preview": "firebase hosting:channel:deploy preview"
+  }
+}
